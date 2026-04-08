@@ -32,7 +32,7 @@ export default function Footer() {
                             <div className="relative w-8 h-8 flex-shrink-0 opacity-60">
                                 <Image src="/logo/SJTU.png" alt="SJTU" fill className="object-contain" />
                             </div>
-                            <span className="text-xs text-slate-600">MINT Lab · Shanghai Jiao Tong University</span>
+                            <span className="text-xs text-slate-600">EvoMind Tech · MINT Lab, SJTU</span>
                         </div>
 
                         <p className="text-slate-500 text-sm leading-relaxed max-w-xs mb-6">

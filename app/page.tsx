@@ -124,7 +124,7 @@ export default function HomePage() {
                             <h2 className="text-3xl md:text-4xl font-black text-white mb-3">{t.demoTitle}</h2>
                             <p className="text-slate-500 max-w-xl mx-auto text-sm">{t.demoDesc}</p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
+                        <div className="flex flex-col gap-6 max-w-4xl mx-auto">
                             <div className="rounded-2xl overflow-hidden border border-slate-700/50 bg-slate-900/50">
                                 <div className="px-4 py-2 bg-slate-800/60 border-b border-slate-700/40 flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-emerald-400" />

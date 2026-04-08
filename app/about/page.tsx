@@ -1,18 +1,19 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { AlertCircle, Lock, FileX, Rocket, Package, Upload, Users } from 'lucide-react';
+import { AlertCircle, Lock, FileX, Building2, GraduationCap, Code2, FlaskConical } from 'lucide-react';
 import { useLang } from '@/lib/LangContext';
 import { aboutT } from '@/lib/i18n';
 
 const problemIcons = [FileX, Lock, AlertCircle];
-const teamTagIcons = [Rocket, Package, Upload, Users];
+// Research-Driven, Open Source, 物智进化, SJTU MINT Lab
+const teamTagIcons = [Building2, GraduationCap, Code2];
 
 const statusConfig = {
-    current:  { color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
-    upcoming: { color: 'text-indigo-400',  bg: 'bg-indigo-500/10 border-indigo-500/20',   dot: 'bg-indigo-400' },
-    planned:  { color: 'text-amber-400',   bg: 'bg-amber-500/10 border-amber-500/20',     dot: 'bg-amber-400' },
-    future:   { color: 'text-slate-400',   bg: 'bg-slate-700/20 border-slate-700/30',     dot: 'bg-slate-500' },
+    current: { color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
+    upcoming: { color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20', dot: 'bg-indigo-400' },
+    planned: { color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-400' },
+    future: { color: 'text-slate-400', bg: 'bg-slate-700/20 border-slate-700/30', dot: 'bg-slate-500' },
 };
 const statusKeys = ['current', 'upcoming', 'planned', 'future'] as const;
 
