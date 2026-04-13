@@ -1,108 +1,6 @@
 [
     {
-        "id": "dataset-001",
-        "name": "EvoRL-Franka-Pick",
-        "description": "Collected via Evo-RL on Franka Emika Panda. Covers pick-and-place across 50+ object categories with varied lighting and table configurations.",
-        "size": "128 GB",
-        "tasks": 52,
-        "trajectories": "120K",
-        "tags": [
-            "Manipulation",
-            "RL",
-            "Real-World"
-        ],
-        "robot": "Franka Emika Panda",
-        "format": "LeRobot",
-        "license": "Apache 2.0",
-        "hf_id": null
-    },
-    {
-        "id": "dataset-002",
-        "name": "EvoRL-UR5-Assembly",
-        "description": "Real-robot assembly dataset collected with UR5e using Evo-RL. Includes precision insertion, screw fastening, and peg-in-hole tasks with force-torque data.",
-        "size": "86 GB",
-        "tasks": 28,
-        "trajectories": "64K",
-        "tags": [
-            "Manipulation",
-            "Assembly",
-            "Real-World"
-        ],
-        "robot": "UR5e",
-        "format": "LeRobot",
-        "license": "Apache 2.0",
-        "hf_id": null
-    },
-    {
-        "id": "dataset-003",
-        "name": "EvoRL-Mobile-Navigation",
-        "description": "Indoor navigation dataset for mobile manipulation platforms. Collected with Evo-RL in real office and lab environments with dynamic obstacles.",
-        "size": "54 GB",
-        "tasks": 15,
-        "trajectories": "32K",
-        "tags": [
-            "Navigation",
-            "Mobile",
-            "Real-World"
-        ],
-        "robot": "Fetch Robot",
-        "format": "LeRobot",
-        "license": "Apache 2.0",
-        "hf_id": null
-    },
-    {
-        "id": "dataset-004",
-        "name": "EvoRL-Dexterous-Hand",
-        "description": "Dexterous grasping and in-hand manipulation dataset collected via Evo-RL with multi-fingered hand. Includes tactile sensor readings and RGB-D streams.",
-        "size": "97 GB",
-        "tasks": 35,
-        "trajectories": "48K",
-        "tags": [
-            "Dexterous",
-            "Manipulation",
-            "Real-World"
-        ],
-        "robot": "Inspire Dexterous Hand",
-        "format": "LeRobot",
-        "license": "Apache 2.0",
-        "hf_id": null
-    },
-    {
-        "id": "dataset-005",
-        "name": "EvoRL-Quadruped-Loco",
-        "description": "Legged locomotion dataset for quadruped robots trained with Evo-RL across diverse terrains including stairs, slopes, and unstructured outdoor environments.",
-        "size": "76 GB",
-        "tasks": 20,
-        "trajectories": "80K",
-        "tags": [
-            "Locomotion",
-            "RL",
-            "Real-World"
-        ],
-        "robot": "Unitree Go2",
-        "format": "LeRobot",
-        "license": "Apache 2.0",
-        "hf_id": null
-    },
-    {
-        "id": "dataset-006",
-        "name": "EvoRL-Humanoid-Whole-Body",
-        "description": "Whole-body control dataset for humanoid robots using Evo-RL. Features loco-manipulation tasks combining locomotion with upper-body manipulation.",
-        "size": "215 GB",
-        "tasks": 40,
-        "trajectories": "96K",
-        "tags": [
-            "Humanoid",
-            "Manipulation",
-            "Real-World"
-        ],
-        "robot": "Unitree H1",
-        "format": "LeRobot",
-        "license": "Apache 2.0",
-        "hf_id": null
-    },
-    {
-        "id": "dataset-007",
+        "id": "dataset-00",
         "name": "droid_lerobot",
         "description": "droid dataset in LeRobot format, transfered by IPEC-COMMUNITY",
         "size": "215 GB",
@@ -114,8 +12,25 @@
             "Real-World"
         ],
         "robot": "franka",
-        "format": "LeRobot",
+        "format": "lerobot 2.1",
         "license": "Apache 2.0",
         "hf_id": "IPEC-COMMUNITY/droid_lerobot"
+    },
+    {
+        "id": "dataset-001",
+        "name": "Insert_tube",
+        "description": "Insert tube dataset in LeRobot format, collected by sixpigs1",
+        "size": "1.18 GB",
+        "tasks": 1,
+        "trajectories": "100",
+        "tags": [
+            "bi_so_follower",
+            "Manipulation",
+            "Real-World"
+        ],
+        "robot": "bi_so_follower",
+        "format": "lerobot 3.0",
+        "license": "Apache 2.0",
+        "hf_id": "sixpigs1/InsertTube"
     }
 ]

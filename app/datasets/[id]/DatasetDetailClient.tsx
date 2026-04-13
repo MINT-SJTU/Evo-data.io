@@ -2,9 +2,10 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowLeft, Download, AlertTriangle, Database, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Download, AlertTriangle, Database } from 'lucide-react';
 import datasetsJson from '@/data/datasets.json';
 import DatasetCard from '@/components/DatasetCard';
+import DatasetVisualizer from '@/components/DatasetVisualizer';
 import { useLang } from '@/lib/LangContext';
 import { detailT } from '@/lib/i18n';
 
@@ -53,13 +54,9 @@ export default function DatasetDetailClient({ dataset }: Props) {
         { label: t.labels.License, value: dataset.license ?? 'Apache-2.0' },
     ];
 
-    const previewUrl = dataset.hf_id
-        ? `https://huggingface.co/spaces/lerobot/visualize_dataset?path=%2F${encodeURIComponent(dataset.hf_id)}%2Fepisode_0`
-        : null;
-
     return (
         <div className="pt-16 bg-slate-50 min-h-screen">
-            <div className="px-6 md:px-12 lg:px-20 py-10 max-w-6xl mx-auto">
+            <div className="px-6 md:px-10 lg:px-16 py-10 max-w-screen-xl mx-auto">
                 {/* Back */}
                 <Link
                     href="/datasets"
@@ -139,22 +136,8 @@ export default function DatasetDetailClient({ dataset }: Props) {
                     <h2 className="text-xl font-bold text-slate-800 mb-1">{t.previewTitle}</h2>
                     <p className="text-sm text-slate-400 mb-6">{t.previewDesc}</p>
 
-                    {previewUrl ? (
-                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 flex flex-col sm:flex-row sm:items-center gap-5">
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-mono text-slate-500 truncate">{dataset.hf_id}</p>
-                                <p className="text-xs text-slate-400 mt-1">LeRobot Visualizer · Hugging Face Spaces</p>
-                            </div>
-                            <a
-                                href={previewUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors shrink-0"
-                            >
-                                <ExternalLink className="w-4 h-4" />
-                                {t.previewBtn}
-                            </a>
-                        </div>
+                    {dataset.hf_id ? (
+                        <DatasetVisualizer hfId={dataset.hf_id} totalEpisodes={undefined} />
                     ) : (
                         <p className="text-sm text-slate-400 bg-slate-100 border border-slate-200 rounded-xl px-5 py-4">
                             {t.previewNoHF}
