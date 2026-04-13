@@ -35,7 +35,7 @@
     },
     {
         "id": "dataset-002",
-        "name": "Insert_tube",
+        "name": "Insert_Screw",
         "description": "Insert the copper screw dataset in LeRobot format, collected by MINT-SJTU",
         "size": "21 GB",
         "tasks": 1,
