@@ -130,14 +130,28 @@ export default function HomePage() {
                                     <div className="w-2 h-2 rounded-full bg-emerald-400" />
                                     <span className="text-xs text-slate-400 font-mono">{t.demoSuccessLabel}</span>
                                 </div>
-                                <Image src="/gif/value_success_small.gif" alt="Success demo" width={960} height={240} unoptimized className="w-full h-auto" />
+                                <video
+                                    src="/demo_success.mp4"
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    className="w-full h-auto block"
+                                />
                             </div>
                             <div className="rounded-2xl overflow-hidden border border-slate-700/50 bg-slate-900/50">
                                 <div className="px-4 py-2 bg-slate-800/60 border-b border-slate-700/40 flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-rose-400" />
                                     <span className="text-xs text-slate-400 font-mono">{t.demoFailureLabel}</span>
                                 </div>
-                                <Image src="/gif/value_failure_small.gif" alt="Failure demo" width={960} height={240} unoptimized className="w-full h-auto" />
+                                <video
+                                    src="/demo_failure.mp4"
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    className="w-full h-auto block"
+                                />
                             </div>
                         </div>
                     </motion.div>

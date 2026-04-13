@@ -6,10 +6,15 @@
         "size": "128 GB",
         "tasks": 52,
         "trajectories": "120K",
-        "tags": ["Manipulation", "RL", "Real-World"],
+        "tags": [
+            "Manipulation",
+            "RL",
+            "Real-World"
+        ],
         "robot": "Franka Emika Panda",
         "format": "LeRobot",
-        "license": "Apache 2.0"
+        "license": "Apache 2.0",
+        "hf_id": null
     },
     {
         "id": "dataset-002",
@@ -18,10 +23,15 @@
         "size": "86 GB",
         "tasks": 28,
         "trajectories": "64K",
-        "tags": ["Manipulation", "Assembly", "Real-World"],
+        "tags": [
+            "Manipulation",
+            "Assembly",
+            "Real-World"
+        ],
         "robot": "UR5e",
         "format": "LeRobot",
-        "license": "Apache 2.0"
+        "license": "Apache 2.0",
+        "hf_id": null
     },
     {
         "id": "dataset-003",
@@ -30,10 +40,15 @@
         "size": "54 GB",
         "tasks": 15,
         "trajectories": "32K",
-        "tags": ["Navigation", "Mobile", "Real-World"],
+        "tags": [
+            "Navigation",
+            "Mobile",
+            "Real-World"
+        ],
         "robot": "Fetch Robot",
         "format": "LeRobot",
-        "license": "Apache 2.0"
+        "license": "Apache 2.0",
+        "hf_id": null
     },
     {
         "id": "dataset-004",
@@ -42,10 +57,15 @@
         "size": "97 GB",
         "tasks": 35,
         "trajectories": "48K",
-        "tags": ["Dexterous", "Manipulation", "Real-World"],
+        "tags": [
+            "Dexterous",
+            "Manipulation",
+            "Real-World"
+        ],
         "robot": "Inspire Dexterous Hand",
         "format": "LeRobot",
-        "license": "Apache 2.0"
+        "license": "Apache 2.0",
+        "hf_id": null
     },
     {
         "id": "dataset-005",
@@ -54,10 +74,15 @@
         "size": "76 GB",
         "tasks": 20,
         "trajectories": "80K",
-        "tags": ["Locomotion", "RL", "Real-World"],
+        "tags": [
+            "Locomotion",
+            "RL",
+            "Real-World"
+        ],
         "robot": "Unitree Go2",
         "format": "LeRobot",
-        "license": "Apache 2.0"
+        "license": "Apache 2.0",
+        "hf_id": null
     },
     {
         "id": "dataset-006",
@@ -66,9 +91,31 @@
         "size": "215 GB",
         "tasks": 40,
         "trajectories": "96K",
-        "tags": ["Humanoid", "Manipulation", "Real-World"],
+        "tags": [
+            "Humanoid",
+            "Manipulation",
+            "Real-World"
+        ],
         "robot": "Unitree H1",
         "format": "LeRobot",
-        "license": "Apache 2.0"
+        "license": "Apache 2.0",
+        "hf_id": null
+    },
+    {
+        "id": "dataset-007",
+        "name": "droid_lerobot",
+        "description": "droid dataset in LeRobot format, transfered by IPEC-COMMUNITY",
+        "size": "215 GB",
+        "tasks": 31308,
+        "trajectories": "92K",
+        "tags": [
+            "Franka",
+            "Manipulation",
+            "Real-World"
+        ],
+        "robot": "franka",
+        "format": "LeRobot",
+        "license": "Apache 2.0",
+        "hf_id": "IPEC-COMMUNITY/droid_lerobot"
     }
 ]

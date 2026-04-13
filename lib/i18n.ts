@@ -389,6 +389,11 @@ export const detailT = {
         downloadBtn: 'Download (Coming Soon)',
         infoTitle: 'Dataset Info',
         relatedTitle: 'Related Datasets',
+        previewTitle: 'Trajectory Preview',
+        previewDesc: 'Interactive visualization powered by LeRobot visualizer on Hugging Face.',
+        previewBtn: 'Open in HF Visualizer',
+        previewClose: 'Close Preview',
+        previewNoHF: 'No Hugging Face repository linked for this dataset.',
         labels: { Size: 'Size', Tasks: 'Tasks', Robot: 'Robot', Format: 'Format', License: 'License', Trajectories: 'Trajectories' },
     },
     zh: {
@@ -400,6 +405,11 @@ export const detailT = {
         downloadBtn: '下载（即将推出）',
         infoTitle: '数据集信息',
         relatedTitle: '相关数据集',
+        previewTitle: '轨迹预览',
+        previewDesc: '由 Hugging Face 上的 LeRobot 可视化工具提供交互式预览。',
+        previewBtn: '在 HF 中预览',
+        previewClose: '关闭预览',
+        previewNoHF: '该数据集暂未关联 Hugging Face 仓库。',
         labels: { Size: '大小', Tasks: '任务数', Robot: '机器人', Format: '格式', License: '许可证', Trajectories: '轨迹数' },
     },
 };
