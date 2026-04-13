@@ -32,5 +32,22 @@
         "format": "lerobot 3.0",
         "license": "Apache 2.0",
         "hf_id": "sixpigs1/InsertTube"
+    },
+    {
+        "id": "dataset-002",
+        "name": "Insert_tube",
+        "description": "Insert the copper screw dataset in LeRobot format, collected by MINT-SJTU",
+        "size": "21 GB",
+        "tasks": 1,
+        "trajectories": "562",
+        "tags": [
+            "bi_so_follower",
+            "Manipulation",
+            "Real-World"
+        ],
+        "robot": "bi_so_follower",
+        "format": "lerobot 3.0",
+        "license": "Apache 2.0",
+        "hf_id": "Elvinky/bi-so101-insert-screw-562ep"
     }
 ]
