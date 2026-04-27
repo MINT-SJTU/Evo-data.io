@@ -9,6 +9,10 @@ import {
 } from 'lucide-react';
 import { completeUpload, getStsCredentials, getUploadStatus, STSCredentials } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import {
+    TAG_CATEGORIES, TagCategory, TagsData, serializeTags, getCategoryLabel, getOptionLabel
+} from '@/lib/tagConfig';
+import { useLang } from '@/lib/LangContext';
 
 type UploadPhase = 'idle' | 'getting_sts' | 'uploading' | 'validating' | 'done' | 'error';
 
@@ -17,27 +21,85 @@ interface FileItem {
     relativePath: string;
 }
 
-// ─── Tag 配置 ──────────────────────────────────────────────────────────────────
+// ─── Tailwind 颜色映射（color key → class strings） ──────────────────────────
+const COLOR_MAP: Record<string, { active: string; hover: string }> = {
+    indigo: { active: 'bg-indigo-600 border-indigo-600 text-white', hover: 'hover:border-indigo-300 hover:text-indigo-600' },
+    emerald: { active: 'bg-emerald-600 border-emerald-600 text-white', hover: 'hover:border-emerald-300 hover:text-emerald-600' },
+    amber: { active: 'bg-amber-500 border-amber-500 text-white', hover: 'hover:border-amber-300 hover:text-amber-600' },
+    violet: { active: 'bg-violet-600 border-violet-600 text-white', hover: 'hover:border-violet-300 hover:text-violet-600' },
+    cyan: { active: 'bg-cyan-600 border-cyan-600 text-white', hover: 'hover:border-cyan-300 hover:text-cyan-600' },
+};
 
-const ROBOT_TYPE_OPTIONS = [
-    'SO101', 'SO100', 'Piper', 'AgiBot', 'UR5', 'UR10',
-    'Franka', 'xArm', 'Dobot', 'Realman', '其他',
-];
+// ─── Tag 选择器组件 ─────────────────────────────────────────────────────────
 
-const TASK_TYPE_OPTIONS = [
-    '家居操作', '工业装配', '物品抓取', '物品摆放', '开关柜门',
-    '食品处理', '医疗辅助', '仓储物流', '双臂协作', '其他',
-];
+interface TagSelectorProps {
+    category: TagCategory;
+    value: string | string[] | undefined;
+    lang: 'zh' | 'en';
+    onChange: (key: string, value: string | string[] | undefined) => void;
+}
+
+function TagSelector({ category, value, lang, onChange }: TagSelectorProps) {
+    const colors = COLOR_MAP[category.color] ?? COLOR_MAP['indigo'];
+
+    const handleClick = (option: string) => {
+        if (category.type === 'single') {
+            onChange(category.key, value === option ? undefined : option);
+        } else {
+            const arr = Array.isArray(value) ? value : [];
+            onChange(
+                category.key,
+                arr.includes(option) ? arr.filter(v => v !== option) : [...arr, option]
+            );
+        }
+    };
+
+    const isSelected = (option: string) =>
+        category.type === 'single'
+            ? value === option
+            : Array.isArray(value) && value.includes(option);
+
+    const typeHint = category.type === 'single'
+        ? (lang === 'en' ? 'single select' : '单选')
+        : (lang === 'en' ? 'multi select' : '多选，可不选');
+
+    return (
+        <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-slate-400" />
+                {getCategoryLabel(category, lang)}
+                {category.required && <span className="text-red-400">*</span>}
+                <span className="text-xs text-slate-400 font-normal">（{typeHint}）</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+                {category.options.map((option) => (
+                    <button
+                        key={option}
+                        type="button"
+                        onClick={() => handleClick(option)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${isSelected(option)
+                            ? colors.active
+                            : `bg-white border-slate-200 text-slate-600 ${colors.hover}`
+                            }`}
+                    >
+                        {getOptionLabel(category, option, lang)}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export default function UploadPage() {
     const { user, loading: authLoading } = useAuth();
+    const { lang } = useLang();
     const router = useRouter();
 
     const [phase, setPhase] = useState<UploadPhase>('idle');
     const [datasetName, setDatasetName] = useState('');
     const [description, setDescription] = useState('');
-    const [selectedRobotTags, setSelectedRobotTags] = useState<string[]>([]);
-    const [selectedTaskTags, setSelectedTaskTags] = useState<string[]>([]);
+    // 结构化 tags 状态：key → string（单选）| string[]（多选）
+    const [tagsData, setTagsData] = useState<TagsData>({});
     const [files, setFiles] = useState<FileItem[]>([]);
     const [progress, setProgress] = useState(0);
     const [statusMsg, setStatusMsg] = useState('');
@@ -48,8 +110,16 @@ export default function UploadPage() {
     const inputRef = useRef<HTMLInputElement>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const toggleTag = (tag: string, selected: string[], setSelected: (v: string[]) => void) => {
-        setSelected(selected.includes(tag) ? selected.filter(t => t !== tag) : [...selected, tag]);
+    const handleTagChange = (key: string, value: string | string[] | undefined) => {
+        setTagsData(prev => {
+            const next = { ...prev };
+            if (value === undefined || (Array.isArray(value) && value.length === 0)) {
+                delete next[key];
+            } else {
+                next[key] = value;
+            }
+            return next;
+        });
     };
 
     useEffect(() => {
@@ -189,8 +259,7 @@ export default function UploadPage() {
                 dataset_name: datasetName,
                 oss_path: creds.upload_dir,
                 description: description.trim() || undefined,
-                robot_type_tags: selectedRobotTags.length ? selectedRobotTags.join(',') : undefined,
-                task_type_tags: selectedTaskTags.length ? selectedTaskTags.join(',') : undefined,
+                tags: Object.keys(tagsData).length > 0 ? serializeTags(tagsData) : undefined,
             });
 
             setPhase('validating');
@@ -302,53 +371,16 @@ export default function UploadPage() {
                                 />
                             </div>
 
-                            {/* 机械臂本体类型 */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-                                    <Tag className="w-3.5 h-3.5 text-indigo-500" />
-                                    机械臂本体类型
-                                    <span className="text-xs text-slate-400 font-normal">（可多选）</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {ROBOT_TYPE_OPTIONS.map((tag) => (
-                                        <button
-                                            key={tag}
-                                            type="button"
-                                            onClick={() => toggleTag(tag, selectedRobotTags, setSelectedRobotTags)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${selectedRobotTags.includes(tag)
-                                                    ? 'bg-indigo-600 border-indigo-600 text-white'
-                                                    : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
-                                                }`}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* 任务类型 */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
-                                    <Tag className="w-3.5 h-3.5 text-emerald-500" />
-                                    任务类型
-                                    <span className="text-xs text-slate-400 font-normal">（可多选）</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {TASK_TYPE_OPTIONS.map((tag) => (
-                                        <button
-                                            key={tag}
-                                            type="button"
-                                            onClick={() => toggleTag(tag, selectedTaskTags, setSelectedTaskTags)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${selectedTaskTags.includes(tag)
-                                                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                                                    : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
-                                                }`}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            {/* Tag 选择器 - 遍历所有分类 */}
+                            {TAG_CATEGORIES.map((category) => (
+                                <TagSelector
+                                    key={category.key}
+                                    category={category}
+                                    value={tagsData[category.key]}
+                                    lang={lang}
+                                    onChange={handleTagChange}
+                                />
+                            ))}
 
                             {/* 文件拖放区 */}
                             <div

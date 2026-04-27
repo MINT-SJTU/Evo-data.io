@@ -6,30 +6,15 @@ import { ArrowRight, Layers, BarChart3 } from 'lucide-react';
 import { useLang } from '@/lib/LangContext';
 import { datasetCardT } from '@/lib/i18n';
 import { DatasetListItem, formatBytes } from '@/lib/api';
+import { parseTags, flattenTags } from '@/lib/tagConfig';
 
-const tagColorMap: Record<string, string> = {
-    // 机械臂本体类型
-    'SO101': 'bg-indigo-50 text-indigo-600 border-indigo-200',
-    'SO100': 'bg-indigo-50 text-indigo-600 border-indigo-200',
-    'Piper': 'bg-violet-50 text-violet-600 border-violet-200',
-    'AgiBot': 'bg-purple-50 text-purple-600 border-purple-200',
-    'UR5': 'bg-blue-50 text-blue-600 border-blue-200',
-    'UR10': 'bg-blue-50 text-blue-600 border-blue-200',
-    'Franka': 'bg-cyan-50 text-cyan-600 border-cyan-200',
-    'xArm': 'bg-sky-50 text-sky-600 border-sky-200',
-    'Dobot': 'bg-teal-50 text-teal-600 border-teal-200',
-    'Realman': 'bg-slate-100 text-slate-600 border-slate-200',
-    // 任务类型
-    '家居操作': 'bg-emerald-50 text-emerald-600 border-emerald-200',
-    '工业装配': 'bg-amber-50 text-amber-600 border-amber-200',
-    '物品抓取': 'bg-rose-50 text-rose-600 border-rose-200',
-    '物品摆放': 'bg-pink-50 text-pink-600 border-pink-200',
-    '开关柜门': 'bg-orange-50 text-orange-600 border-orange-200',
-    '食品处理': 'bg-lime-50 text-lime-600 border-lime-200',
-    '医疗辅助': 'bg-red-50 text-red-600 border-red-200',
-    '仓储物流': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-    '双臂协作': 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200',
-    '其他': 'bg-slate-100 text-slate-500 border-slate-200',
+// category key → Tailwind color classes
+const categoryColorMap: Record<string, string> = {
+    robot_type: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+    task_type: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    other: 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200',
+    data_type: 'bg-amber-50 text-amber-600 border-amber-200',
+    data_format: 'bg-cyan-50 text-cyan-600 border-cyan-200',
 };
 
 const coverGradients = [
@@ -48,8 +33,9 @@ export default function DatasetCard({ dataset, index }: Props) {
     const t = datasetCardT[lang];
     const gradient = coverGradients[index % coverGradients.length];
 
-    // tags 字段为逗号分隔字符串
-    const tagList = dataset.tags ? dataset.tags.split(',').map(s => s.trim()).filter(Boolean) : [];
+    // 解析 JSON 结构化 tags
+    const tagsData = parseTags(dataset.tags);
+    const tagList = flattenTags(tagsData); // [{key, label}]
     const sizeStr = formatBytes(dataset.size_bytes);
 
     return (
@@ -68,8 +54,10 @@ export default function DatasetCard({ dataset, index }: Props) {
                     </svg>
                 </div>
                 <div className="absolute bottom-3 left-4 flex flex-wrap gap-1.5">
-                    {tagList.slice(0, 2).map((tag) => (
-                        <span key={tag} className={`text-xs px-2 py-0.5 rounded-full border font-medium ${tagColorMap[tag] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>{tag}</span>
+                    {tagList.slice(0, 2).map((item) => (
+                        <span key={item.category.key + ':' + item.value} className={`text-xs px-2 py-0.5 rounded-full border font-medium ${categoryColorMap[item.category.key] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                            {lang === 'en' ? item.displayEn : item.displayZh}
+                        </span>
                     ))}
                 </div>
                 <div className="absolute bottom-3 right-4 text-xs text-slate-400 font-mono">{sizeStr}</div>

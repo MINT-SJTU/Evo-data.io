@@ -18,6 +18,7 @@ import {
     Save,
     Settings,
     ShieldCheck,
+    Tag,
     X,
 } from 'lucide-react';
 import {
@@ -34,6 +35,8 @@ import {
     updateNickname,
 } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { useLang } from '@/lib/LangContext';
+import { TAG_CATEGORIES, TagsData, parseTags, serializeTags, flattenTags, getCategoryLabel, getOptionLabel } from '@/lib/tagConfig';
 
 // ─── 倒计时 Hook ───────────────────────────────────────────────────────────────
 function useCountdown() {
@@ -260,15 +263,67 @@ function AdminTab() {
     );
 }
 
+// ─── Tailwind 颜色映射 ────────────────────────────────────────────────────────
+const COLOR_MAP: Record<string, { active: string; hover: string }> = {
+    indigo: { active: 'bg-indigo-600 border-indigo-600 text-white', hover: 'hover:border-indigo-300 hover:text-indigo-600' },
+    emerald: { active: 'bg-emerald-600 border-emerald-600 text-white', hover: 'hover:border-emerald-300 hover:text-emerald-600' },
+    amber: { active: 'bg-amber-500 border-amber-500 text-white', hover: 'hover:border-amber-300 hover:text-amber-600' },
+    violet: { active: 'bg-violet-600 border-violet-600 text-white', hover: 'hover:border-violet-300 hover:text-violet-600' },
+    cyan: { active: 'bg-cyan-600 border-cyan-600 text-white', hover: 'hover:border-cyan-300 hover:text-cyan-600' },
+};
+
+interface TagSelectorProps {
+    category: typeof TAG_CATEGORIES[number];
+    value: string | string[] | undefined;
+    lang: 'zh' | 'en';
+    onChange: (key: string, value: string | string[] | undefined) => void;
+}
+
+function TagSelector({ category, value, lang, onChange }: TagSelectorProps) {
+    const colors = COLOR_MAP[category.color] ?? COLOR_MAP['indigo'];
+    const handleClick = (option: string) => {
+        if (category.type === 'single') {
+            onChange(category.key, value === option ? undefined : option);
+        } else {
+            const arr = Array.isArray(value) ? value : [];
+            onChange(category.key, arr.includes(option) ? arr.filter(v => v !== option) : [...arr, option]);
+        }
+    };
+    const isSelected = (option: string) =>
+        category.type === 'single' ? value === option : Array.isArray(value) && value.includes(option);
+    const typeHint = category.type === 'single'
+        ? (lang === 'en' ? 'single' : '单选')
+        : (lang === 'en' ? 'multi' : '多选');
+    return (
+        <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
+                <Tag className="w-3 h-3 text-slate-400" />
+                {getCategoryLabel(category, lang)}
+                {category.required && <span className="text-red-400">*</span>}
+                <span className="text-xs text-slate-400 font-normal">({typeHint})</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+                {category.options.map((option) => (
+                    <button key={option} type="button" onClick={() => handleClick(option)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${isSelected(option) ? colors.active : `bg-white border-slate-200 text-slate-600 ${colors.hover}`}`}>
+                        {getOptionLabel(category, option, lang)}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 数据集卡片（可编辑 + 下载）
 // ═══════════════════════════════════════════════════════════════════════════════
 function DatasetCard({ dataset, isOwner = false, isAdmin = false, onUpdated }:
     { dataset: DatasetListItem; isOwner?: boolean; isAdmin?: boolean; onUpdated?: () => void }) {
+    const { lang } = useLang();
     const [expanded, setExpanded] = useState(false);
     const [editing, setEditing] = useState(false);
     const [desc, setDesc] = useState(dataset.description || '');
-    const [tags, setTags] = useState(dataset.tags || '');
+    const [tagsData, setTagsData] = useState<TagsData>(() => parseTags(dataset.tags));
     const [isPublic, setIsPublic] = useState(dataset.is_public);
     const [saving, setSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState('');
@@ -278,7 +333,7 @@ function DatasetCard({ dataset, isOwner = false, isAdmin = false, onUpdated }:
     const handleSave = async () => {
         setSaving(true); setSaveMsg('');
         try {
-            await updateDataset(dataset.id, { description: desc, tags, is_public: isPublic });
+            await updateDataset(dataset.id, { description: desc, tags: serializeTags(tagsData), is_public: isPublic });
             setSaveMsg('✓ 已保存'); setEditing(false); onUpdated?.();
             setTimeout(() => setSaveMsg(''), 3000);
         } catch (e: unknown) { setSaveMsg('❌ ' + ((e as Error).message || '保存失败')); }
@@ -314,8 +369,8 @@ function DatasetCard({ dataset, isOwner = false, isAdmin = false, onUpdated }:
                     </div>
                     {dataset.tags && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
-                            {dataset.tags.split(',').map((t) => (
-                                <span key={t} className="text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600">{t.trim()}</span>
+                            {flattenTags(parseTags(dataset.tags)).map((item) => (
+                                <span key={item.category.key + ':' + item.value} className="text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600">{item.value}</span>
                             ))}
                         </div>
                     )}
@@ -378,16 +433,22 @@ function DatasetCard({ dataset, isOwner = false, isAdmin = false, onUpdated }:
                                             className="w-full px-3 py-2 text-sm text-slate-800 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-200 resize-none" />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-slate-500 mb-1">标签（逗号分隔）</label>
-                                        <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="SO101,家居操作,…"
-                                            className="w-full px-3 py-2 text-sm text-slate-800 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                                        <p className="block text-xs font-medium text-slate-500 mb-2">标签</p>
+                                        <div className="space-y-3">
+                                            {TAG_CATEGORIES.map(cat => (
+                                                <TagSelector key={cat.key} category={cat}
+                                                    value={tagsData[cat.key as keyof TagsData]}
+                                                    lang={lang}
+                                                    onChange={(k, v) => setTagsData(prev => ({ ...prev, [k]: v }))} />
+                                            ))}
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button onClick={handleSave} disabled={saving}
                                             className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl hover:bg-indigo-700 disabled:opacity-60 transition">
                                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 保存
                                         </button>
-                                        <button onClick={() => { setEditing(false); setDesc(dataset.description || ''); setTags(dataset.tags || ''); setIsPublic(dataset.is_public); }}
+                                        <button onClick={() => { setEditing(false); setDesc(dataset.description || ''); setTagsData(parseTags(dataset.tags)); setIsPublic(dataset.is_public); }}
                                             className="px-4 py-2 text-sm text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition">取消</button>
                                         {saveMsg && <span className={`text-sm ${saveMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-600'}`}>{saveMsg}</span>}
                                     </div>

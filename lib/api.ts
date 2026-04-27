@@ -233,8 +233,7 @@ export interface UploadCompleteRequest {
     dataset_name: string;
     oss_path: string;
     description?: string;
-    robot_type_tags?: string;   // 逗号分隔，如 "SO101,Piper"
-    task_type_tags?: string;    // 逗号分隔，如 "家居,工业"
+    tags?: string;   // JSON 序列化后的 TagsData 字符串
 }
 
 export interface UploadStatusResponse {

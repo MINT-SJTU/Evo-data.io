@@ -4,8 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { ArrowLeft, Download, AlertTriangle, Database, Loader2, Lock } from 'lucide-react';
-import datasetsJson from '@/data/datasets.json';
+import { ArrowLeft, Download, AlertTriangle, Database, Loader2, Lock } from 'lucide-react'; import datasetsJson from '@/data/datasets.json';
 import DatasetCard from '@/components/DatasetCard';
 import DatasetVisualizer from '@/components/DatasetVisualizer';
 import { useLang } from '@/lib/LangContext';
@@ -200,7 +199,20 @@ export default function DatasetDetailClient({ dataset }: Props) {
                                     id: d.id,
                                     name: d.name,
                                     description: d.description ?? null,
-                                    tags: Array.isArray(d.tags) ? d.tags.join(',') : (d.tags ?? null),
+                                    tags: Array.isArray(d.tags) ? (() => {
+                                        // 将旧格式 string[] 转换为 JSON 对象字符串
+                                        const robotOptions = ['SO100', 'SO101', 'Piper', 'UR5', 'Franka-Panda', 'xArm6', 'Franka'];
+                                        const taskOptions = ['工业生产装配', '商业零售与陈列', '酒店服务', '食品与餐饮', '家庭生活', '医疗助理', '专业科研', '教育场景'];
+                                        const obj: Record<string, string | string[]> = {};
+                                        const others: string[] = [];
+                                        for (const t of d.tags) {
+                                            if (robotOptions.some(r => t.startsWith(r.split('-')[0]))) obj.robot_type = t;
+                                            else if (taskOptions.includes(t)) obj.task_type = t;
+                                            else others.push(t);
+                                        }
+                                        if (others.length) obj.other = others;
+                                        return JSON.stringify(obj);
+                                    })() : (d.tags ?? null),
                                     is_public: true,
                                     version: '1.0',
                                     total_episodes: typeof d.tasks === 'number' ? d.tasks : null,

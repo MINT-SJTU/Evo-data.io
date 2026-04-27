@@ -7,6 +7,7 @@ import { listDatasets, DatasetListItem } from '@/lib/api';
 import DatasetCard from '@/components/DatasetCard';
 import { useLang } from '@/lib/LangContext';
 import { datasetsT } from '@/lib/i18n';
+import { TAG_CATEGORIES, parseTags, getCategoryLabel, getOptionLabel } from '@/lib/tagConfig';
 
 export default function DatasetsPage() {
     const { lang } = useLang();
@@ -25,14 +26,18 @@ export default function DatasetsPage() {
         const q = search.toLowerCase();
         return datasets.filter((d) => {
             const matchSearch = !q || d.name.toLowerCase().includes(q) || (d.description ?? '').toLowerCase().includes(q);
-            const matchTag = !activeTag || (d.tags ?? '').includes(activeTag);
+            if (!activeTag) return matchSearch;
+            // activeTag 格式为 "catKey:optionKey"，在解析后的 TagsData 中精确匹配
+            const [catKey, optVal] = activeTag.split(':');
+            const tagsData = parseTags(d.tags);
+            const val = tagsData[catKey];
+            const matchTag = Array.isArray(val) ? val.includes(optVal) : val === optVal;
             return matchSearch && matchTag;
         });
     }, [search, activeTag, datasets]);
 
-    const robotTags = ['SO101', 'SO100', 'Piper', 'AgiBot', 'UR5', 'UR10', 'Franka', 'xArm', 'Dobot', 'Realman'];
-    const taskTags = ['家居操作', '工业装配', '物品抓取', '物品摆放', '开关柜门', '食品处理', '医疗辅助', '仓储物流', '双臂协作'];
-    const allRawTags = [...robotTags, ...taskTags];
+    // 只展示 robot_type 和 task_type 两个分类作为筛选栏
+    const filterCategories = TAG_CATEGORIES.filter(c => c.key === 'robot_type' || c.key === 'task_type');
 
 
     return (
@@ -69,38 +74,40 @@ export default function DatasetsPage() {
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
                         />
                     </div>
-                    {/* 机械臂类型 */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-slate-400 font-medium shrink-0">机械臂</span>
-                        <button
-                            onClick={() => setActiveTag('')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${!activeTag ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'}`}
-                        >
-                            全部
-                        </button>
-                        {robotTags.map((tag) => (
-                            <button
-                                key={tag}
-                                onClick={() => setActiveTag(tag === activeTag ? '' : tag)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${activeTag === tag ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600'}`}
-                            >
-                                {tag}
-                            </button>
-                        ))}
-                    </div>
-                    {/* 任务类型 */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-slate-400 font-medium shrink-0">任务</span>
-                        {taskTags.map((tag) => (
-                            <button
-                                key={tag}
-                                onClick={() => setActiveTag(tag === activeTag ? '' : tag)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${activeTag === tag ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600'}`}
-                            >
-                                {tag}
-                            </button>
-                        ))}
-                    </div>
+                    {/* 动态筛选栏：robot_type + task_type */}
+                    {filterCategories.map((cat) => {
+                        const activeColors = cat.color === 'indigo'
+                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            : 'bg-emerald-600 border-emerald-600 text-white';
+                        const hoverColors = cat.color === 'indigo'
+                            ? 'hover:border-indigo-300 hover:text-indigo-600'
+                            : 'hover:border-emerald-300 hover:text-emerald-600';
+                        return (
+                            <div key={cat.key} className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs text-slate-400 font-medium shrink-0">
+                                    {getCategoryLabel(cat, lang)}
+                                </span>
+                                <button
+                                    onClick={() => setActiveTag('')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${!activeTag || !activeTag.startsWith(cat.key + ':') ? activeColors : 'bg-white border-slate-200 text-slate-500 ' + hoverColors}`}
+                                >
+                                    {lang === 'en' ? 'All' : '全部'}
+                                </button>
+                                {cat.options.map((opt) => {
+                                    const tagKey = `${cat.key}:${opt}`;
+                                    return (
+                                        <button
+                                            key={opt}
+                                            onClick={() => setActiveTag(activeTag === tagKey ? '' : tagKey)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${activeTag === tagKey ? activeColors : `bg-white border-slate-200 text-slate-500 ${hoverColors}`}`}
+                                        >
+                                            {getOptionLabel(cat, opt, lang)}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
                 </div>
             </section>
 
