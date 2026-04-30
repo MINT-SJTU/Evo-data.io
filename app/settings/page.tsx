@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown,
     ChevronUp,
+    Copy,
+    Check,
     Database,
     Download,
     Eye,
@@ -53,6 +55,27 @@ function useCountdown() {
     return { countdown, start };
 }
 
+// ─── 可复制 ID 行 ─────────────────────────────────────────────────────────────
+function CopyableId({ label, value }: { label: string; value: string }) {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = () => {
+        navigator.clipboard.writeText(value).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+    return (
+        <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-400 shrink-0 w-20">{label}</span>
+            <code className="flex-1 font-mono text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded truncate">{value}</code>
+            <button onClick={handleCopy} title="复制"
+                className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition shrink-0">
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+        </div>
+    );
+}
+
 type Tab = 'account' | 'my_datasets' | 'admin';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -80,16 +103,17 @@ export default function SettingsPage() {
                     <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg select-none">
                         {user.phone.slice(0, 1)}
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-0">
                         <p className="text-base font-semibold text-slate-800">
                             {user.phone.slice(0, 3)}****{user.phone.slice(7)}
                         </p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 mb-2">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${user.level === 'admin' ? 'bg-rose-100 text-rose-700' : user.level === 'contributor' ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
                                 {user.level === 'admin' ? '管理员' : user.level === 'contributor' ? '贡献者' : '普通用户'}
                             </span>
                             <span className="text-xs text-slate-400">排名 #{user.rank}</span>
                         </div>
+                        <CopyableId label="User ID" value={user.id} />
                     </div>
                 </div>
 
@@ -407,6 +431,13 @@ function DatasetCard({ dataset, isOwner = false, isAdmin = false, onUpdated }:
                                         {dataset.robot && <span>机器人 {dataset.robot}</span>}
                                         {dataset.license && <span>协议 {dataset.license}</span>}
                                         {dataset.has_preview && <span className="text-emerald-500">✓ 有预览</span>}
+                                    </div>
+                                    {/* ID 信息 */}
+                                    <div className="space-y-1.5 pt-1">
+                                        <CopyableId label="Dataset ID" value={dataset.id} />
+                                        {isAdmin && dataset.upload_id && (
+                                            <CopyableId label="Upload ID" value={dataset.upload_id} />
+                                        )}
                                     </div>
                                     {canEdit && (
                                         <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 mt-1">

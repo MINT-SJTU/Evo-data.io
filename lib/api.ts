@@ -172,6 +172,21 @@ export async function getStsCredentials(): Promise<STSCredentials> {
     return request<STSCredentials>("/sts", {}, true);
 }
 
+export async function getPresignUrls(
+    upload_dir: string,
+    relative_paths: string[]
+): Promise<Record<string, string>> {
+    const resp = await request<{ urls: Record<string, string> }>(
+        "/sts/presign",
+        {
+            method: "POST",
+            body: JSON.stringify({ upload_dir, relative_paths }),
+        },
+        true
+    );
+    return resp.urls;
+}
+
 // ─── Datasets ─────────────────────────────────────────────────────────────────
 
 export interface DatasetListItem {
@@ -187,8 +202,10 @@ export interface DatasetListItem {
     robot: string | null;
     license: string;
     has_preview: boolean;
+    thumbnail_path: string | null;
     created_at: string;
     owner_phone: string | null;
+    upload_id: string | null;  // 关联的最新 upload ID（admin 视图填充）
 }
 
 export interface DatasetDetail extends DatasetListItem {
@@ -233,7 +250,8 @@ export interface UploadCompleteRequest {
     dataset_name: string;
     oss_path: string;
     description?: string;
-    tags?: string;   // JSON 序列化后的 TagsData 字符串
+    tags?: string;      // JSON 序列化后的 TagsData 字符串
+    is_public?: boolean; // 是否公开，默认 false
 }
 
 export interface UploadStatusResponse {
@@ -263,6 +281,19 @@ export async function getDownloadUrl(datasetId: string, file: string): Promise<{
     );
 }
 
+export interface PreviewInfo {
+    fps: number;
+    total_frames: number;
+    episode_index: number;
+    features: Record<string, { dtype: string; shape: number[]; names?: unknown }>;
+    video_urls: Record<string, string>;   // {cam_name: signed_url}
+    trajectory_url: string | null;
+}
+
+export async function getPreviewInfo(datasetId: string): Promise<PreviewInfo> {
+    return request<PreviewInfo>(`/datasets/${datasetId}/preview-info`, {}, true);
+}
+
 export async function adminListAllDatasets(params?: {
     search?: string;
     skip?: number;
@@ -283,4 +314,9 @@ export function formatBytes(bytes: number | null): string {
     if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
     if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
     return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+}
+
+/** 返回数据集缩略图的 URL（后端签名重定向）*/
+export function getThumbnailUrl(datasetId: string): string {
+    return `${BASE_URL}/datasets/${datasetId}/thumbnail`;
 }

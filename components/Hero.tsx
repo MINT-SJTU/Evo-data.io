@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, type Variants } from 'framer-motion';
 import { ArrowRight, Play, ChevronDown } from 'lucide-react';
 import { useLang } from '@/lib/LangContext';
 import { heroT } from '@/lib/i18n';
-import { siteStats } from '@/lib/siteStats';
+import { fetchSiteStats, formatStatBytes, formatStatCount, type SiteStats } from '@/lib/siteStats';
 
 function HeroCanvas() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,6 +91,20 @@ const itemVariants: Variants = {
 export default function Hero() {
     const { lang } = useLang();
     const t = heroT[lang];
+    const [stats, setStats] = useState<SiteStats | null>(null);
+
+    useEffect(() => {
+        fetchSiteStats().then(setStats).catch(() => { /* 加载失败时保持 null，UI 显示占位符 */ });
+    }, []);
+
+    const statValues = stats
+        ? [
+            formatStatCount(stats.total_datasets),
+            formatStatCount(stats.total_episodes),
+            formatStatBytes(stats.total_size_bytes),
+            formatStatCount(stats.total_frames),
+        ]
+        : ['—', '—', '—', '—'];
 
     return (
         <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#0B0F19]">
@@ -121,12 +135,7 @@ export default function Hero() {
                     </motion.p>
 
                     <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-center gap-8 py-2">
-                        {[
-                            siteStats.formatted.datasets,
-                            siteStats.formatted.trajectories,
-                            siteStats.formatted.dataVolume,
-                            siteStats.formatted.tasks,
-                        ].map((value, i) => (
+                        {statValues.map((value, i) => (
                             <div key={t.statLabels[i]} className="flex flex-col items-center">
                                 <span className="text-2xl md:text-3xl font-black gradient-text">{value}</span>
                                 <span className="text-xs text-slate-500 uppercase tracking-widest mt-0.5">{t.statLabels[i]}</span>

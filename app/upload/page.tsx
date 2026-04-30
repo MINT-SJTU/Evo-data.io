@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-    AlertCircle, CheckCircle2, CloudUpload, FileArchive,
+    AlertCircle, CheckCircle2, CloudUpload, Eye, EyeOff, FileArchive,
     Loader2, Upload, X, Tag
 } from 'lucide-react';
-import { completeUpload, getStsCredentials, getUploadStatus, STSCredentials } from '@/lib/api';
+import { completeUpload, getStsCredentials, getPresignUrls, getUploadStatus, STSCredentials } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import {
     TAG_CATEGORIES, TagCategory, TagsData, serializeTags, getCategoryLabel, getOptionLabel
@@ -98,15 +98,20 @@ export default function UploadPage() {
     const [phase, setPhase] = useState<UploadPhase>('idle');
     const [datasetName, setDatasetName] = useState('');
     const [description, setDescription] = useState('');
+    const [isPublic, setIsPublic] = useState(true);
     // 结构化 tags 状态：key → string（单选）| string[]（多选）
     const [tagsData, setTagsData] = useState<TagsData>({});
     const [files, setFiles] = useState<FileItem[]>([]);
     const [progress, setProgress] = useState(0);
     const [statusMsg, setStatusMsg] = useState('');
     const [uploadId, setUploadId] = useState('');
+    const [uploadDir, setUploadDir] = useState('');     // 断点续传：记录 upload_dir
     const [datasetId, setDatasetId] = useState('');
     const [validationError, setValidationError] = useState('');
     const [dragOver, setDragOver] = useState(false);
+    // 需要过滤的无效文件警告（.cache 等）
+    const [filteredCount, setFilteredCount] = useState(0);
+    const [showFilterWarning, setShowFilterWarning] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -156,6 +161,14 @@ export default function UploadPage() {
         collectFiles(items);
     }, []);
 
+    // 无效文件的路径段匹配规则（含这些目录/文件名的视为无效）
+    const INVALID_PATH_PATTERNS = [
+        '.cache', '__pycache__', '.git', '.DS_Store',
+        '.huggingface', 'node_modules', '.ipynb_checkpoints',
+    ];
+    const isInvalidFile = (relativePath: string) =>
+        INVALID_PATH_PATTERNS.some(p => relativePath.split('/').includes(p));
+
     const collectFiles = (items: DataTransferItemList) => {
         const collected: FileItem[] = [];
         const traverse = (entry: FileSystemEntry, path: string): Promise<void> => {
@@ -181,44 +194,59 @@ export default function UploadPage() {
             const entry = items[i].webkitGetAsEntry();
             if (entry) promises.push(traverse(entry, ""));
         }
-        Promise.all(promises).then(() => setFiles(collected));
+        Promise.all(promises).then(() => {
+            const invalid = collected.filter(f => isInvalidFile(f.relativePath));
+            const valid = collected.filter(f => !isInvalidFile(f.relativePath));
+            setFiles(valid);
+            if (invalid.length > 0) {
+                setFilteredCount(invalid.length);
+                setShowFilterWarning(true);
+            } else {
+                setFilteredCount(0);
+                setShowFilterWarning(false);
+            }
+        });
     };
 
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selected = e.target.files;
         if (!selected) return;
-        const items: FileItem[] = [];
+        const allItems: FileItem[] = [];
         for (let i = 0; i < selected.length; i++) {
             const f = selected[i];
-            items.push({ file: f, relativePath: (f as unknown as { webkitRelativePath?: string }).webkitRelativePath || f.name });
+            allItems.push({ file: f, relativePath: (f as unknown as { webkitRelativePath?: string }).webkitRelativePath || f.name });
         }
-        setFiles(items);
+        const invalid = allItems.filter(f => isInvalidFile(f.relativePath));
+        const valid = allItems.filter(f => !isInvalidFile(f.relativePath));
+        setFiles(valid);
+        if (invalid.length > 0) {
+            setFilteredCount(invalid.length);
+            setShowFilterWarning(true);
+        } else {
+            setFilteredCount(0);
+            setShowFilterWarning(false);
+        }
     };
 
-    // 上传单个文件到 OSS（通过 OSS SDK / presigned URL 方式）
-    // 这里使用简单的 PUT 请求，实际部署时可引入 ali-oss SDK
-    const uploadFileToOSS = async (
-        creds: STSCredentials,
+    // 使用预签名 URL 上传单个文件（无需任何 Authorization 头，签名已在 URL 中）
+    const uploadFileWithPresignUrl = async (
+        presignUrl: string,
         fileItem: FileItem,
-        ossDir: string,
         onProgress: (done: number, total: number) => void,
         index: number,
         total: number
     ) => {
-        const key = ossDir + fileItem.relativePath;
-        const endpoint = creds.endpoint.replace("https://", "");
-        const url = `https://${creds.bucket}.${endpoint}/${key}`;
-
-        // 使用 XMLHttpRequest 支持进度回调
         await new Promise<void>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
-            xhr.open("PUT", url);
-            xhr.setRequestHeader("x-oss-security-token", creds.security_token);
+            xhr.open("PUT", presignUrl);
+            // 必须与后端签名时保持一致，覆盖浏览器自动检测的 MIME 类型（如 video/mp4）
+            xhr.setRequestHeader("Content-Type", "application/octet-stream");
             xhr.upload.onprogress = () => onProgress(index, total);
             xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`OSS PUT 失败: ${xhr.status}`)));
             xhr.onerror = () => reject(new Error("网络错误"));
             xhr.send(fileItem.file);
         });
+        onProgress(index, total);
     };
 
     const handleUpload = async () => {
@@ -234,32 +262,75 @@ export default function UploadPage() {
         setPhase('getting_sts');
         setStatusMsg('正在获取上传凭证...');
         try {
-            const creds = await getStsCredentials();
-            setUploadId(creds.upload_id);
+            // ── 断点续传：若已有 uploadId，复用已有会话，不重新申请 STS ─────────
+            let currentUploadId = uploadId;
+            let currentUploadDir = uploadDir;
+
+            if (!currentUploadId || !currentUploadDir) {
+                // 全新上传
+                const creds = await getStsCredentials();
+                currentUploadId = creds.upload_id;
+                currentUploadDir = creds.upload_dir;
+                setUploadId(currentUploadId);
+                setUploadDir(currentUploadDir);
+            }
+
+            // 批量获取所有文件的预签名 PUT URL（URLs 有效期 1 小时，每次都重新获取）
+            setStatusMsg('正在生成上传链接...');
+            const relativePaths = files.map(f => f.relativePath);
+            const presignUrls = await getPresignUrls(currentUploadDir, relativePaths);
 
             setPhase('uploading');
             setProgress(0);
 
+            // ── 断点续传：从 sessionStorage 恢复已完成文件 ──────────────────
+            const sessionKey = `upload_done_${currentUploadId}`;
+            const donePaths: Set<string> = new Set(
+                JSON.parse(sessionStorage.getItem(sessionKey) || '[]')
+            );
+            let doneCount = donePaths.size;
+            setProgress(Math.round((doneCount / files.length) * 100));
+
             for (let i = 0; i < files.length; i++) {
-                setStatusMsg(`正在上传 ${i + 1} / ${files.length}: ${files[i].relativePath}`);
-                await uploadFileToOSS(
-                    creds,
-                    files[i],
-                    creds.upload_dir,
+                const fileItem = files[i];
+
+                // 跳过已成功上传的文件
+                if (donePaths.has(fileItem.relativePath)) {
+                    continue;
+                }
+
+                const presignUrl = presignUrls[fileItem.relativePath];
+                if (!presignUrl) {
+                    throw new Error(`未找到文件的上传链接: ${fileItem.relativePath}`);
+                }
+
+                setStatusMsg(`正在上传 ${doneCount + 1} / ${files.length}: ${fileItem.relativePath}`);
+                await uploadFileWithPresignUrl(
+                    presignUrl,
+                    fileItem,
                     (done, total) => setProgress(Math.round((done / total) * 100)),
-                    i + 1,
+                    doneCount + 1,
                     files.length
                 );
-                setProgress(Math.round(((i + 1) / files.length) * 100));
+
+                // 标记成功并持久化（用于断点续传）
+                donePaths.add(fileItem.relativePath);
+                doneCount++;
+                sessionStorage.setItem(sessionKey, JSON.stringify([...donePaths]));
+                setProgress(Math.round((doneCount / files.length) * 100));
             }
+
+            // 全部上传完成，清除断点记录
+            sessionStorage.removeItem(sessionKey);
 
             setStatusMsg('上传完成，正在触发校验...');
             await completeUpload({
-                upload_id: creds.upload_id,
+                upload_id: currentUploadId,
                 dataset_name: datasetName,
-                oss_path: creds.upload_dir,
+                oss_path: currentUploadDir,
                 description: description.trim() || undefined,
                 tags: Object.keys(tagsData).length > 0 ? serializeTags(tagsData) : undefined,
+                is_public: isPublic,
             });
 
             setPhase('validating');
@@ -295,7 +366,7 @@ export default function UploadPage() {
                             <p className="text-sm text-emerald-600 mb-4">数据集已创建，您现在可以设置为公开。</p>
                             {datasetId && (
                                 <button
-                                    onClick={() => router.push(`/datasets/${datasetId}`)}
+                                    onClick={() => router.push(`/datasets/view?id=${datasetId}`)}
                                     className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 transition"
                                 >
                                     查看数据集
@@ -314,12 +385,31 @@ export default function UploadPage() {
                                     <p className="text-sm text-red-600 whitespace-pre-wrap">{validationError}</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => { setPhase('idle'); setFiles([]); setValidationError(''); }}
-                                className="mt-4 px-5 py-2 rounded-xl bg-red-100 text-red-700 font-semibold text-sm hover:bg-red-200 transition"
-                            >
-                                重新上传
-                            </button>
+                            <div className="mt-4 flex gap-3">
+                                {/* 断点续传：upload_id 存在时显示，从中断处继续 */}
+                                {uploadId && (
+                                    <button
+                                        onClick={() => {
+                                            setValidationError('');
+                                            handleUpload();
+                                        }}
+                                        className="px-5 py-2 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition"
+                                    >
+                                        继续上传（断点续传）
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        // 清除断点记录，重新开始
+                                        if (uploadId) sessionStorage.removeItem(`upload_done_${uploadId}`);
+                                        setPhase('idle'); setFiles([]); setValidationError('');
+                                        setUploadId(''); setUploadDir('');
+                                    }}
+                                    className="px-5 py-2 rounded-xl bg-red-100 text-red-700 font-semibold text-sm hover:bg-red-200 transition"
+                                >
+                                    重新上传
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -371,6 +461,31 @@ export default function UploadPage() {
                                 />
                             </div>
 
+                            {/* 是否公开 */}
+                            <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-slate-200">
+                                <div>
+                                    <p className="text-sm font-medium text-slate-700">
+                                        {lang === 'en' ? 'Public Dataset' : '公开数据集'}
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-0.5">
+                                        {lang === 'en'
+                                            ? 'Public datasets are visible to all users on the platform'
+                                            : '公开后所有用户可在数据集页面查看和下载'}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPublic(!isPublic)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isPublic
+                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                >
+                                    {isPublic
+                                        ? <><Eye className="w-4 h-4" />{lang === 'en' ? 'Public' : '已公开'}</>
+                                        : <><EyeOff className="w-4 h-4" />{lang === 'en' ? 'Private' : '不公开'}</>}
+                                </button>
+                            </div>
+
                             {/* Tag 选择器 - 遍历所有分类 */}
                             {TAG_CATEGORIES.map((category) => (
                                 <TagSelector
@@ -407,6 +522,26 @@ export default function UploadPage() {
                                     onChange={handleFileInput}
                                 />
                             </div>
+
+                            {/* 无效文件过滤警告 */}
+                            {showFilterWarning && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                                    <div className="flex-1">
+                                        <p className="text-xs font-semibold text-amber-700 mb-1">
+                                            已自动过滤 {filteredCount} 个无效文件
+                                        </p>
+                                        <p className="text-xs text-amber-600">
+                                            检测到 <code className="bg-amber-100 px-1 rounded">.cache</code>、
+                                            <code className="bg-amber-100 px-1 rounded">__pycache__</code>、
+                                            <code className="bg-amber-100 px-1 rounded">.git</code> 等非数据集文件，已自动排除，不影响上传。
+                                        </p>
+                                    </div>
+                                    <button onClick={() => setShowFilterWarning(false)} className="text-amber-400 hover:text-amber-600">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
 
                             {/* 文件列表预览 */}
                             {files.length > 0 && (

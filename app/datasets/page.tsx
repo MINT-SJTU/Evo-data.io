@@ -36,8 +36,8 @@ export default function DatasetsPage() {
         });
     }, [search, activeTag, datasets]);
 
-    // 只展示 robot_type 和 task_type 两个分类作为筛选栏
-    const filterCategories = TAG_CATEGORIES.filter(c => c.key === 'robot_type' || c.key === 'task_type');
+    // 全部 tag 分类都作为筛选栏
+    const filterCategories = TAG_CATEGORIES;
 
 
     return (
@@ -74,22 +74,24 @@ export default function DatasetsPage() {
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
                         />
                     </div>
-                    {/* 动态筛选栏：robot_type + task_type */}
+                    {/* 动态筛选栏：所有 tag 分类 */}
                     {filterCategories.map((cat) => {
-                        const activeColors = cat.color === 'indigo'
-                            ? 'bg-indigo-600 border-indigo-600 text-white'
-                            : 'bg-emerald-600 border-emerald-600 text-white';
-                        const hoverColors = cat.color === 'indigo'
-                            ? 'hover:border-indigo-300 hover:text-indigo-600'
-                            : 'hover:border-emerald-300 hover:text-emerald-600';
+                        const colorMap: Record<string, { active: string; hover: string }> = {
+                            indigo: { active: 'bg-indigo-600 border-indigo-600 text-white', hover: 'hover:border-indigo-300 hover:text-indigo-600' },
+                            emerald: { active: 'bg-emerald-600 border-emerald-600 text-white', hover: 'hover:border-emerald-300 hover:text-emerald-600' },
+                            amber: { active: 'bg-amber-500 border-amber-500 text-white', hover: 'hover:border-amber-300 hover:text-amber-600' },
+                            violet: { active: 'bg-violet-600 border-violet-600 text-white', hover: 'hover:border-violet-300 hover:text-violet-600' },
+                            cyan: { active: 'bg-cyan-600 border-cyan-600 text-white', hover: 'hover:border-cyan-300 hover:text-cyan-600' },
+                        };
+                        const colors = colorMap[cat.color] ?? colorMap['indigo'];
                         return (
                             <div key={cat.key} className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs text-slate-400 font-medium shrink-0">
+                                <span className="text-xs text-slate-400 font-medium shrink-0 w-16 text-right">
                                     {getCategoryLabel(cat, lang)}
                                 </span>
                                 <button
                                     onClick={() => setActiveTag('')}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${!activeTag || !activeTag.startsWith(cat.key + ':') ? activeColors : 'bg-white border-slate-200 text-slate-500 ' + hoverColors}`}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${!activeTag.startsWith(cat.key + ':') ? colors.active : `bg-white border-slate-200 text-slate-500 ${colors.hover}`}`}
                                 >
                                     {lang === 'en' ? 'All' : '全部'}
                                 </button>
@@ -99,7 +101,7 @@ export default function DatasetsPage() {
                                         <button
                                             key={opt}
                                             onClick={() => setActiveTag(activeTag === tagKey ? '' : tagKey)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${activeTag === tagKey ? activeColors : `bg-white border-slate-200 text-slate-500 ${hoverColors}`}`}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${activeTag === tagKey ? colors.active : `bg-white border-slate-200 text-slate-500 ${colors.hover}`}`}
                                         >
                                             {getOptionLabel(cat, opt, lang)}
                                         </button>
