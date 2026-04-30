@@ -48,6 +48,11 @@ function getAxisNames(feature: { shape: number[]; names?: unknown }): string[] {
     return Array.from({ length: feature.shape?.[0] ?? 1 }, (_, i) => `dim_${i}`);
 }
 
+// 不在轨迹图中显示的无意义元数据字段
+const SKIP_FEATURES = new Set([
+    'timestamp', 'frame_index', 'episode_index', 'index', 'task_index',
+]);
+
 /** 将 trajectory rows 中的向量列展开为每帧每个维度的值 */
 function flattenTrajectory(
     rows: Record<string, unknown>[],
@@ -56,9 +61,10 @@ function flattenTrajectory(
     const seriesKeys: string[] = [];
     const seriesLabels: string[] = [];
 
-    // 收集所有需要展开的 feature（非图像，shape[0] > 0）
+    // 收集所有需要展开的 feature（非图像、非元数据，shape[0] > 0）
     const vectorFeatures: Array<{ key: string; names: string[] }> = [];
     for (const [featKey, feat] of Object.entries(features)) {
+        if (SKIP_FEATURES.has(featKey)) continue;
         if (!feat.shape || feat.shape.length === 0) continue;
         if (featKey.includes('image') || featKey.includes('pixel')) continue;
         const names = getAxisNames(feat);
@@ -172,35 +178,33 @@ function TrajectoryChart({
     if (seriesKeys.length === 0 || data.length === 0) return null;
 
     return (
-        <div className="mb-6">
+        <div className="mb-6 min-w-0">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{title}</p>
-            <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="frame" tick={{ fontSize: 10 }} tickLine={false} />
-                        <YAxis tick={{ fontSize: 10 }} width={40} tickLine={false} />
-                        <Tooltip
-                            contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }}
-                            labelFormatter={(v) => `Frame ${v}`}
+            <ResponsiveContainer width="100%" height={192} minWidth={0}>
+                <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="frame" tick={{ fontSize: 10 }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} width={40} tickLine={false} />
+                    <Tooltip
+                        contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                        labelFormatter={(v) => `Frame ${v}`}
+                    />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
+                    <ReferenceLine x={currentFrame} stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 2" />
+                    {seriesKeys.map((sk, i) => (
+                        <Line
+                            key={sk}
+                            type="monotone"
+                            dataKey={sk}
+                            name={seriesLabels[i]}
+                            stroke={COLORS[i % COLORS.length]}
+                            dot={false}
+                            strokeWidth={1.5}
+                            isAnimationActive={false}
                         />
-                        <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
-                        <ReferenceLine x={currentFrame} stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 2" />
-                        {seriesKeys.map((sk, i) => (
-                            <Line
-                                key={sk}
-                                type="monotone"
-                                dataKey={sk}
-                                name={seriesLabels[i]}
-                                stroke={COLORS[i % COLORS.length]}
-                                dot={false}
-                                strokeWidth={1.5}
-                                isAnimationActive={false}
-                            />
-                        ))}
-                    </LineChart>
-                </ResponsiveContainer>
-            </div>
+                    ))}
+                </LineChart>
+            </ResponsiveContainer>
         </div>
     );
 }

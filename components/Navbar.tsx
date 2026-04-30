@@ -54,7 +54,7 @@ export default function Navbar() {
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2.5 group">
                     <div className="relative w-20 h-10 flex-shrink-0">
-                        <Image src="/logo/EvoMind1.png" alt="EvoMind Logo" fill className="object-contain" />
+                        <Image src="/logo/EvoMind1.png" alt="EvoMind Logo" fill className="object-contain" priority loading="eager" />
                     </div>
                     <div className="relative w-8 h-8 flex-shrink-0 opacity-70">
                         <Image src="/logo/SJTU.png" alt="SJTU Logo" fill className="object-contain" />
