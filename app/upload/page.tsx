@@ -164,7 +164,7 @@ export default function UploadPage() {
     // 无效文件的路径段匹配规则（含这些目录/文件名的视为无效）
     const INVALID_PATH_PATTERNS = [
         '.cache', '__pycache__', '.git', '.DS_Store',
-        '.huggingface', 'node_modules', '.ipynb_checkpoints',
+        '.huggingface', 'node_modules', '.ipynb_checkpoints', '.gitattributes', '.gitignore'
     ];
     const isInvalidFile = (relativePath: string) =>
         INVALID_PATH_PATTERNS.some(p => relativePath.split('/').includes(p));
